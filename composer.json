@@ -1,0 +1,25 @@
+{
+  "name": "michelmany/canopy-tenant-turner-api",
+  "description": "Canopy Tenant Turner API",
+  "type": "worpress-plugin",
+  "license": "GPL-2.0+",
+  "require": {
+    "htmlburger/carbon-fields": "^3.6",
+    "guzzlehttp/guzzle": "^7.0",
+    "timber/timber": "^2.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Inc\\": "./inc"
+    }
+  },
+  "config": {
+    "platform-check": false,
+    "platform": {
+      "php": "7.4.0"
+    },
+    "allow-plugins": {
+      "composer/installers": true
+    }
+  }
+}
