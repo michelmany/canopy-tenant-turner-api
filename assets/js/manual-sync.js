@@ -7,14 +7,18 @@ jQuery(document).ready(function($) {
     $('#manual-sync').one('click', function(event) {
         event.preventDefault(); // Prevent default action
         updateSyncStatus('Syncing...');
+        $(this).prop('disabled', true); // Disable the button
+
         $.post(ajax_object.ajax_url, {action: 'manual_sync_action'}, function(response) {
             if (response.success) {
                 updateSyncStatus('Sync complete!');
             } else {
                 updateSyncStatus('Error - ' + response.data);
             }
+            $('#manual-sync').prop('disabled', false); // Enable the button
         }).fail(function() {
             updateSyncStatus('Error - Request failed');
+            $('#manual-sync').prop('disabled', false); // Enable the button
         });
     });
 

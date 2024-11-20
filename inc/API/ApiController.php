@@ -2,6 +2,7 @@
 
 namespace Inc\API;
 
+use Exception;
 use GuzzleHttp\Exception\GuzzleException;
 use WP_Error;
 use WP_Post;
@@ -30,14 +31,18 @@ class ApiController {
 	 * @throws GuzzleException
 	 */
 	public function processLocationPost(): void {
-		$entities = get_transient( 'entities_to_process' );
-		if ( ! $entities ) {
-			$entities = $this->all();
-			set_transient( 'entities_to_process', $entities, 60 * 60 ); // Store entities in a transient for 1 hour
-		}
+		try {
+			$entities = get_transient( 'entities_to_process' );
+			if ( ! $entities ) {
+				$entities = $this->all();
+				set_transient( 'entities_to_process', $entities, 60 * 60 ); // Store entities in a transient for 1 hour
+			}
 
-		$this->processEntitiesBatch( $entities );
-		$this->cleanRemovedPostsFromApi( $this->all() );
+			$this->processEntitiesBatch( $entities );
+			$this->cleanRemovedPostsFromApi( $this->all() );
+		} catch ( Exception $e ) {
+			error_log( 'Error in processLocationPost: ' . $e->getMessage() );
+		}
 	}
 
 	/**
@@ -48,10 +53,11 @@ class ApiController {
 	 * @return void
 	 */
 	private function processEntitiesBatch( array &$entities ): void {
+		$batchSize = 10; // Process 10 entities at a time
 		$processed = 0;
 
 		foreach ( $entities as $index => $entity ) {
-			if ( $processed >= 10 ) {
+			if ( $processed >= $batchSize ) {
 				break;
 			}
 
@@ -66,7 +72,10 @@ class ApiController {
 			$processed ++;
 		}
 
-		set_transient( 'entities_to_process', $entities, 60 * 60 ); // Update the transient
+		if ( ! empty( $entities ) ) {
+			set_transient( 'entities_to_process', $entities, 60 * 60 ); // Update the transient
+			wp_schedule_single_event( time() + 60, 'canopy_listings_sync' ); // Schedule the next batch in 1 minute
+		}
 	}
 
 
