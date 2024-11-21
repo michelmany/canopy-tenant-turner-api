@@ -9,7 +9,7 @@ use WP_Post;
 use WP_Query;
 use GuzzleHttp\Client;
 
-class ApiController {
+class ApiController extends EntityProcessor {
 
 	public const POST_TYPE = 'listing';
 	public const BASE_URI = 'https://app.tenantturner.com';
@@ -159,36 +159,7 @@ class ApiController {
 		];
 
 		wp_update_post( $updateArray );
-
-		// Prepare address field
-		$address = [
-			'address' => "{$entity->address}, {$entity->city}, {$entity->state} {$entity->zip}",
-			'lat'     => $entity->latitude,
-			'lng'     => $entity->longitude,
-			'zoom'    => 16,
-		];
-
-		// Upload images and get their attachment IDs
-		$imageIds = [];
-		foreach ( $entity->photos as $photoUrl ) {
-			$imageId = $this->uploadImage( $photoUrl );
-			if ( $imageId ) {
-				$imageIds[] = $imageId;
-			}
-		}
-
-		// Update ACF fields
-		update_field( 'rent', $entity->rentAmount, $wpEntityPost->ID );
-		update_field( 'deposit', $entity->depositAmount, $wpEntityPost->ID );
-		update_field( 'bedrooms', $entity->beds, $wpEntityPost->ID );
-		update_field( 'bathrooms', $entity->baths, $wpEntityPost->ID );
-		update_field( 'square_footage', $entity->squareFootage, $wpEntityPost->ID );
-		update_field( 'address', $address, $wpEntityPost->ID );
-		update_field( 'image_gallery', $imageIds, $wpEntityPost->ID );
-		update_field( 'description', $entity->description, $wpEntityPost->ID );
-		update_field( 'schedule_viewing_url', $entity->btnUrl, $wpEntityPost->ID );
-		update_field( 'submit_an_application_url', $entity->applyUrl, $wpEntityPost->ID );
-		update_field( 'restrictions', '', $wpEntityPost->ID ); // Empty field
+		$this->updateFields( $wpEntityPost, $entity );
 	}
 
 	/**
@@ -214,35 +185,7 @@ class ApiController {
 			return $postId;
 		}
 
-		// Prepare address field
-		$address = [
-			'address' => "{$entity->address}, {$entity->city}, {$entity->state} {$entity->zip}",
-			'lat'     => $entity->latitude,
-			'lng'     => $entity->longitude,
-			'zoom'    => 16,
-		];
-
-		// Upload images and get their attachment IDs
-		$imageIds = [];
-		foreach ( $entity->photos as $photoUrl ) {
-			$imageId = $this->uploadImage( $photoUrl );
-			if ( $imageId ) {
-				$imageIds[] = $imageId;
-			}
-		}
-
-		// Update ACF fields
-		update_field( 'rent', $entity->rentAmount, $postId );
-		update_field( 'deposit', $entity->depositAmount, $postId );
-		update_field( 'bedrooms', $entity->beds, $postId );
-		update_field( 'bathrooms', $entity->baths, $postId );
-		update_field( 'square_footage', $entity->squareFootage, $postId );
-		update_field( 'address', $address, $postId );
-		update_field( 'image_gallery', $imageIds, $postId );
-		update_field( 'description', $entity->description, $postId );
-		update_field( 'schedule_viewing_url', $entity->btnUrl, $postId );
-		update_field( 'submit_an_application_url', $entity->applyUrl, $postId );
-		update_field( 'restrictions', '', $postId ); // Empty field
+		$this->updateFields( get_post( $postId ), $entity );
 
 		return $postId;
 	}
@@ -254,7 +197,7 @@ class ApiController {
 	 *
 	 * @return int|false
 	 */
-	private function uploadImage( string $imageUrl ): bool|int {
+	protected function uploadImage( string $imageUrl ): bool|int {
 		$uploadDir = wp_upload_dir();
 		$imageData = file_get_contents( $imageUrl );
 		$filename = basename( $imageUrl );
