@@ -2,7 +2,7 @@
 /*
  * Plugin Name: Canopy Tenant Turner API
  * Description:       Plugin that will display listings data from the Tenant Turner API.
- * Version:           0.0.2
+ * Version:           0.0.3
  * Author:            Michel Many
  * Author URI:        https://michelmany.com
  * License:           GPL-2.0+
