@@ -75,6 +75,8 @@ class ApiController extends EntityProcessor {
 		if ( ! empty( $entities ) ) {
 			set_transient( 'entities_to_process', $entities, 60 * 60 ); // Update the transient
 			wp_schedule_single_event( time() + 60, 'canopy_listings_sync' ); // Schedule the next batch in 1 minute
+		} else {
+			delete_transient('entities_to_process'); // Clear the transient if all entities are processed
 		}
 	}
 
@@ -198,9 +200,19 @@ class ApiController extends EntityProcessor {
 	 * @return int|false
 	 */
 	protected function uploadImage( string $imageUrl ): bool|int {
+		// Generate a unique filename using a hash of the image URL
+		$hash = md5( $imageUrl );
+		$filename = $hash . '.' . pathinfo( $imageUrl, PATHINFO_EXTENSION );
+
+		// Check if the image already exists
+		$attachment_id = $this->checkIfImageExists( $hash );
+		if ( $attachment_id ) {
+			return $attachment_id;
+		}
+
+		// Proceed with uploading the image
 		$uploadDir = wp_upload_dir();
 		$imageData = file_get_contents( $imageUrl );
-		$filename = basename( $imageUrl );
 		if ( wp_mkdir_p( $uploadDir['path'] ) ) {
 			$file = $uploadDir['path'] . '/' . $filename;
 		} else {
@@ -220,7 +232,30 @@ class ApiController extends EntityProcessor {
 		$attachData = wp_generate_attachment_metadata( $attachId, $file );
 		wp_update_attachment_metadata( $attachId, $attachData );
 
+		// Add the hash as metadata to the attachment
+		add_post_meta( $attachId, '_image_hash', $hash );
+
 		return $attachId;
+	}
+
+	protected function checkIfImageExists( string $hash ): bool|int {
+		$query_args = [
+			'post_type'   => 'attachment',
+			'post_status' => 'inherit',
+			'meta_query'  => [
+				[
+					'key'     => '_image_hash',
+					'value'   => $hash,
+					'compare' => '=',
+				],
+			],
+		];
+		$query = new WP_Query( $query_args );
+		if ( $query->have_posts() ) {
+			return $query->posts[0]->ID;
+		}
+
+		return false;
 	}
 
 	/**
